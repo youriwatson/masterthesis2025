@@ -1,0 +1,328 @@
+import re
+import sqlite3
+
+import pandas as pd
+import pyautogui
+import time
+import random
+import subprocess
+
+import pyperclip
+from pydantic import BaseModel
+from openai import OpenAI
+
+reporting_periods = [
+    "Q4 2026",
+    "Q3 2026",
+    "Q2 2026",
+    "Q1 2026",
+    "Q4 2025",
+    "Q3 2025",
+    "Q2 2025",
+    "Q1 2025",
+    "Q4 2024",
+    "Q3 2024",
+    "Q2 2024",
+    "Q1 2024",
+    "Q4 2023",
+    "Q3 2023",
+    "Q2 2023",
+    "Q1 2023",
+    "Q4 2022",
+    "Q3 2022",
+    "Q2 2022",
+    "Q1 2022",
+    "Q4 2021",
+    "Q3 2021",
+    "Q2 2021",
+    "Q1 2021",
+    "Q4 2020",
+    "Q3 2020",
+    "Q2 2020",
+    "Q1 2020",
+    "Q4 2019",
+    "Q3 2019",
+    "Q2 2019",
+    "Q1 2019",
+    "Q4 2018",
+    "Q3 2018",
+    "Q2 2018",
+    "Q1 2018"
+]
+
+client = OpenAI(api_key=API_KEY)
+
+class ReportingDateExtraction(BaseModel):
+    reporting_period: str
+
+# Load ticker csv
+#ticker_df = pd.read_csv("ticker.csv")
+
+# Convert to list
+#ticker_list = ticker_df['Symbol'].tolist()
+
+# Load ticker csv
+ticker_df = pd.read_csv("/Users/susanwatson/Documents/masterscriptie/data/koyfin_tickers_2021.csv")
+
+# Convert to list
+#ticker_list = ticker_df['Symbol'].tolist()
+ticker_list = ticker_df['ticker'].tolist()
+
+# Sub-functions #
+
+def random_delay(min_seconds=0.5, max_seconds=3.0):
+    """Wait for a random amount of time within the specified range."""
+    delay = random.uniform(min_seconds, max_seconds)
+    time.sleep(delay)
+
+def click_at_coordinates(x, y):
+    """Move to specified coordinates and click."""
+    pyautogui.moveTo(x, y, duration=random.uniform(0.3, 0.6))
+    random_delay(0.1, 0.2)
+    pyautogui.click()
+    random_delay(0.5, 0.7)
+
+def release_all_keys():
+    for key in ['command', 'shift', 'ctrl', 'option', 'fn']:
+        try:
+            pyautogui.keyUp(key)
+        except Exception:
+            pass
+
+# Main functions #
+
+def go_to_next_transcript(index):
+        """
+        Automate the mouse movement to go to the next transcript.
+        """
+        # click on advanced terms
+        click_at_coordinates(587.2708129882812, 307.2286682128906)
+
+        # click on input field for 'Exact word or phrase'
+        click_at_coordinates(531.353515625, 477.3413391113281)
+
+        # delete previous input
+        pyautogui.hotkey('command', 'a')
+        time.sleep(0.25)
+        pyautogui.press('delete')
+        time.sleep(0.2)
+
+        # enter new input
+        search_term = f"{reporting_periods[index]} Earnings Call"
+        pyperclip.copy(search_term)
+        time.sleep(0.1)
+        pyautogui.hotkey('command', 'v')
+        time.sleep(0.3)
+
+        # click on 'Apply Terms'
+        click_at_coordinates(952.7368774414062, 632.591552734375)
+        time.sleep(0.8)
+
+        # click on first transcript in results
+        click_at_coordinates(829.0486450195312, 386.58935546875)
+
+        # click on close in side panel
+        click_at_coordinates(829.0486450195312, 386.58935546875)
+
+
+def copy_content():
+    """Select all content and copy it."""
+    # Select all - press command down, press a, release a, release command
+    pyautogui.keyDown('command')
+    time.sleep(0.1)
+    pyautogui.press('a')
+    time.sleep(0.1)
+    pyautogui.keyUp('command')
+    random_delay(0.1, 0.3)
+
+    # Copy - press command down, press c, release c, release command
+    pyautogui.keyDown('command')
+    time.sleep(0.1)
+    pyautogui.press('c')
+    time.sleep(0.1)
+    pyautogui.keyUp('command')
+    random_delay(0.2, 0.3)
+
+    # Get the copied content from clipboard
+    process = subprocess.Popen(['pbpaste'], stdout=subprocess.PIPE)
+    clipboard_content, _ = process.communicate()
+    return clipboard_content.decode('utf-8')
+
+
+def insert_database(ticker, transcript_number, content, reporting_period_index):
+    """Insert the content and reporting period column for the given ticker, transcript_number."""
+    print(f"Inserting database for transcript: {ticker}, {transcript_number}")
+
+    # convert index to reporting period
+    reporting_period = reporting_periods[reporting_period_index]
+
+    conn = sqlite3.connect("transcripts_data.db")
+    c = conn.cursor()
+
+    c.execute('''
+        INSERT INTO transcripts (ticker, transcript_number, content, reporting_period)
+        VALUES (?, ?, ?, ?)
+    ''', (ticker, transcript_number, content, reporting_period))
+
+    conn.commit()
+    conn.close()
+
+    print(f"Database updated for transcript: {ticker}, {transcript_number}")
+
+
+def go_to_ticker_first_transcript(ticker):
+    """function to go to the first transcript for a given ticker"""
+    release_all_keys()
+    # click on company search bar
+    click_at_coordinates(338.5027770996094, 631.9517211914062)
+    # type ticker and press enter
+    pyautogui.write(ticker)
+    random_delay(1, 1.1)
+
+    pyautogui.press('enter')
+    random_delay(0.5, 0.8)
+
+    # click on first transcript
+    click_at_coordinates(677.229736328125, 386.5523376464844)
+
+def close_ticker():
+    # click on close
+    click_at_coordinates(1069.25390625, 358.5331115722656)
+
+    # unselect ticker
+    click_at_coordinates(329.7379150390625, 669.34716796875)
+
+    # reset advanced search terms
+    # click on advanced terms
+    click_at_coordinates(587.2708129882812, 307.2286682128906)
+
+    # click on input field for 'Exact word or phrase'
+    click_at_coordinates(531.353515625, 477.3413391113281)
+
+    # delete previous input
+    pyautogui.hotkey('command', 'a')
+    time.sleep(0.25)
+    pyautogui.press('delete')
+    time.sleep(0.2)
+
+    # click on 'Apply Terms'
+    click_at_coordinates(952.7368774414062, 632.591552734375)
+    time.sleep(0.8)
+
+    release_all_keys()
+    time.sleep(0.2)
+
+def get_most_recent_reporting_period(date_text):
+    """function to extract the reporting period of the most recent transcript.
+    This allows me to search for the next transcript using the reporting_periods list"""
+    response = client.responses.parse(
+        model="gpt-4.1-mini",
+        input=[
+            {
+                "role": "system",
+                "content": "You are an accurate assistant. Your task is to extract the reporting period of the earnings call that is written in the provided text."
+                           "Example: 'Q1 2023'. please use the same format as the example, so first the quarter then the year. Please convert it into the given structure."
+            },
+            {"role": "user", "content": date_text},
+        ],
+        text_format=ReportingDateExtraction,
+    )
+
+    reporting_period = response.output_parsed.reporting_period
+    return reporting_period
+
+
+def get_used_tickers():
+    conn = sqlite3.connect("transcripts_data.db")
+    c = conn.cursor()
+
+    # Select distinct tickers
+    c.execute('SELECT DISTINCT ticker FROM transcripts')
+    tickers = c.fetchall()
+
+    # Convert to list of uppercase strings
+    used_ticker_list = [ticker[0].upper() for ticker in tickers if ticker[0] is not None]
+
+    conn.close()
+
+    return used_ticker_list
+
+def get_tickers_old_method():
+    conn = sqlite3.connect("transcripts_data.db")
+    c = conn.cursor()
+
+    # Select distinct tickers
+    c.execute('''
+        SELECT DISTINCT ticker FROM transcripts
+        WHERE reporting_period IS NULL
+        ''')
+    tickers = c.fetchall()
+
+    # Convert to list of uppercase strings
+    old_ticker_list = [ticker[0].upper() for ticker in tickers if ticker[0] is not None]
+
+    conn.close()
+
+    return old_ticker_list
+
+
+def open_chrome(chrome_icon_x, chrome_icon_y):
+    """Click on Chrome icon at the specified coordinates."""
+    print("Opening Chrome...")
+    click_at_coordinates(chrome_icon_x, chrome_icon_y)
+    random_delay(0.5, 0.8)  # Wait for Chrome to open
+
+
+def main():
+    CHROME_ICON_X, CHROME_ICON_Y = 1055, 864  # Example coordinates - adjust these
+    # Open Chrome
+    open_chrome(CHROME_ICON_X, CHROME_ICON_Y)
+
+    used_tickers = get_used_tickers()
+
+    for ticker in ticker_list:
+        # if ticker has been used already, skip to next one
+        if ticker in used_tickers:
+            continue
+
+        # Skip if ticker contains a period
+        if "." in ticker:
+            continue
+
+        # keep track of number of transcripts processed for the ticker (max 18)
+        transcript_number = 1
+
+        go_to_ticker_first_transcript(ticker)
+
+        while transcript_number <= 18:
+            content = copy_content()
+
+            if transcript_number == 1:
+                # Extract the part between "Close" and "Event Participants"
+                match = re.search(r'Close(.*?)Event Participants', content, re.DOTALL)
+                if match:
+                    date_text = match.group(1).strip() # extract the text with earnings call date and reporting period
+                else:
+                    break
+
+                most_recent_reporting_period = get_most_recent_reporting_period(date_text)
+                most_recent_reporting_period_index = reporting_periods.index(most_recent_reporting_period)
+
+            insert_database(ticker, transcript_number, content,
+                            reporting_period_index=most_recent_reporting_period_index + transcript_number - 1)
+
+            go_to_next_transcript(index=most_recent_reporting_period_index + transcript_number)
+
+            transcript_number += 1
+
+        # after 18 transcripts, close this ticker
+        close_ticker()
+
+
+
+
+
+if __name__ == "__main__":
+    print("Starting transcript content scraper...")
+    main()
+    print("Script execution completed")

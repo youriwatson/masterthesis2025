@@ -56,17 +56,10 @@ class ReportingDateExtraction(BaseModel):
     reporting_period: str
 
 # Load ticker csv
-#ticker_df = pd.read_csv("ticker.csv")
+ticker_df = pd.read_csv("ticker.csv")
 
 # Convert to list
-#ticker_list = ticker_df['Symbol'].tolist()
-
-# Load ticker csv
-ticker_df = pd.read_csv("/Users/susanwatson/Documents/masterscriptie/data/koyfin_tickers_2021.csv")
-
-# Convert to list
-#ticker_list = ticker_df['Symbol'].tolist()
-ticker_list = ticker_df['ticker'].tolist()
+ticker_list = ticker_df['Symbol'].tolist()
 
 # Sub-functions #
 
@@ -274,7 +267,7 @@ def open_chrome(chrome_icon_x, chrome_icon_y):
 
 
 def main():
-    CHROME_ICON_X, CHROME_ICON_Y = 1055, 864  # Example coordinates - adjust these
+    CHROME_ICON_X, CHROME_ICON_Y = 1055, 864  # My coordinates for google chrome
     # Open Chrome
     open_chrome(CHROME_ICON_X, CHROME_ICON_Y)
 

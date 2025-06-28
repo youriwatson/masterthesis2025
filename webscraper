@@ -55,7 +55,7 @@ client = OpenAI(api_key=API_KEY)
 class ReportingDateExtraction(BaseModel):
     reporting_period: str
 
-# Load ticker csv
+# Load csv containing ticker symbols of S&P 500 companies
 ticker_df = pd.read_csv("ticker.csv")
 
 # Convert to list
@@ -239,24 +239,6 @@ def get_used_tickers():
     conn.close()
 
     return used_ticker_list
-
-def get_tickers_old_method():
-    conn = sqlite3.connect("transcripts_data.db")
-    c = conn.cursor()
-
-    # Select distinct tickers
-    c.execute('''
-        SELECT DISTINCT ticker FROM transcripts
-        WHERE reporting_period IS NULL
-        ''')
-    tickers = c.fetchall()
-
-    # Convert to list of uppercase strings
-    old_ticker_list = [ticker[0].upper() for ticker in tickers if ticker[0] is not None]
-
-    conn.close()
-
-    return old_ticker_list
 
 
 def open_chrome(chrome_icon_x, chrome_icon_y):
